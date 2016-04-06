@@ -3,6 +3,26 @@ import ReactDOM from 'react-dom';
 import store from './logic';
 import {connect, Provider} from 'react-redux';
 import {bindActionCreators} from 'redux';
+// import getSynonym from './api';
+import superagent from 'superagent';
+
+var bhtKey = "41acd19c3639856d205e03a0c61fdb5b";
+
+function getSynonym(word, cb) {
+  superagent
+  .get('https://words.bighugelabs.com/api/2/' + bhtKey + '/' + word + '/json')
+  .end(function(err, res) {
+    if (err || !res.ok) {
+      console.log('Oh no! error');
+    } else {
+      console.log(JSON.parse(res.text));
+      var synonym = JSON.parse(res.text).adjective.syn[0];
+      console.log(synonym);
+      return cb(synonym);
+    }
+  });
+}
+
 
 // action creators
 function colorChange(newColor) {
@@ -16,9 +36,33 @@ function colorChange(newColor) {
 function colorChangeTemp(newColor) {
   return function(dispatch) {
     dispatch(colorChange(newColor));
+    dispatch(synonymChange(newColor));
     setTimeout(function() {
+      dispatch(synonymChange('red'));
       dispatch(colorChange('red'));
     }, 5000);
+  }
+}
+
+function synonymChange(newColor) {
+  return function(dispatch) {
+    superagent
+    .get('https://words.bighugelabs.com/api/2/' + bhtKey + '/' + newColor + '/json')
+    .end(function(err, res) {
+      if (err || !res.ok) {
+        console.log('Oh no! error');
+      } else {
+        console.log(JSON.parse(res.text));
+        var synonym = JSON.parse(res.text).adjective.syn.pop();
+        console.log(synonym);
+        dispatch(
+          {
+            type: 'SYN_CHANGE',
+            synonym: synonym
+          }
+        );
+      }
+    });
   }
 }
 
@@ -42,7 +86,6 @@ ColorChanger.propTypes = {
   bgcolor: React.PropTypes.string.isRequired,
   bgChange: React.PropTypes.func.isRequired
 };
-
 ColorChanger = connect(
   function(state) {
     return {
@@ -67,7 +110,6 @@ class ColorDisplayer extends React.Component {
 ColorDisplayer.propTypes = {
   color: React.PropTypes.string.isRequired
 };
-
 ColorDisplayer= connect(
   function(state) {
     return {
@@ -76,6 +118,25 @@ ColorDisplayer= connect(
   }
 )(ColorDisplayer);
 
+class SynDisplayer extends React.Component {
+  render() {
+    return (
+      <div>
+        {'A possible synonym is: ' + this.props.word}
+      </div>
+    )
+  }
+}
+SynDisplayer.propTypes = {
+  word: React.PropTypes.string
+}
+SynDisplayer= connect(
+  function(state) {
+    return {
+      word: state.synonym
+    }
+  }
+)(SynDisplayer);
 
 class Demo extends React.Component {
   // constructor(props) {
@@ -98,8 +159,9 @@ class Demo extends React.Component {
   render() {
     return (
       <div>
-        <ColorChanger  />
-        <ColorDisplayer  />
+        <ColorChanger />
+        <ColorDisplayer />
+        <SynDisplayer />
       </div>
     )
   }
