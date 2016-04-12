@@ -64,6 +64,10 @@
 
 	var _redux = __webpack_require__(166);
 
+	var _api = __webpack_require__(190);
+
+	var _api2 = _interopRequireDefault(_api);
+
 	var _superagent = __webpack_require__(183);
 
 	var _superagent2 = _interopRequireDefault(_superagent);
@@ -75,25 +79,8 @@
 	function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
 
 	function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
-	// import getSynonym from './api';
 
-
-	var bhtKey = "41acd19c3639856d205e03a0c61fdb5b";
-
-	function getSynonym(word, cb) {
-	  _superagent2.default.get('https://words.bighugelabs.com/api/2/' + bhtKey + '/' + word + '/json').end(function (err, res) {
-	    if (err || !res.ok) {
-	      console.log('Oh no! error');
-	    } else {
-	      console.log(JSON.parse(res.text));
-	      var synonym = JSON.parse(res.text).adjective.syn[0];
-	      console.log(synonym);
-	      return cb(synonym);
-	    }
-	  });
-	}
-
-	// action creators
+	// ------- action creators -------
 	function colorChange(newColor) {
 	  return {
 	    type: 'COLOR_CHANGE',
@@ -101,35 +88,44 @@
 	  };
 	}
 
-	//async action creators
-	function colorChangeTemp(newColor) {
+	// ------- async action creators -------
+	function colorChangeTemporarily(newColor) {
 	  return function (dispatch) {
 	    dispatch(colorChange(newColor));
 	    dispatch(synonymChange(newColor));
+	    dispatch(definitionChange(newColor));
 	    setTimeout(function () {
 	      dispatch(synonymChange('red'));
 	      dispatch(colorChange('red'));
+	      dispatch(definitionChange('red'));
 	    }, 5000);
 	  };
 	}
 
 	function synonymChange(newColor) {
 	  return function (dispatch) {
-	    _superagent2.default.get('https://words.bighugelabs.com/api/2/' + bhtKey + '/' + newColor + '/json').end(function (err, res) {
-	      if (err || !res.ok) {
-	        console.log('Oh no! error');
-	      } else {
-	        console.log(JSON.parse(res.text));
-	        var synonym = JSON.parse(res.text).adjective.syn.pop();
-	        console.log(synonym);
-	        dispatch({
-	          type: 'SYN_CHANGE',
-	          synonym: synonym
-	        });
-	      }
+	    _api2.default.getSynonym(newColor, function (synonym) {
+	      dispatch({
+	        type: 'SYN_CHANGE',
+	        synonym: synonym
+	      });
 	    });
 	  };
 	}
+
+	function definitionChange(newColor) {
+	  return function (dispatch) {
+	    _api2.default.getDefinition(newColor, function (definition) {
+	      dispatch({
+	        type: 'DEFINITION_CHANGE',
+	        definition: definition
+	      });
+	    });
+	  };
+	}
+
+	// -------------- Components --------------
+	// ----------------------------------------
 
 	var ColorChanger = function (_React$Component) {
 	  _inherits(ColorChanger, _React$Component);
@@ -151,8 +147,11 @@
 	      return _react2.default.createElement(
 	        'div',
 	        { id: 'main',
-	          style: { width: '100vw', height: '50vh', backgroundColor: this.props.bgcolor }
-
+	          style: {
+	            width: '100vw',
+	            height: '50vh',
+	            backgroundColor: this.props.bgcolor
+	          }
 	        },
 	        _react2.default.createElement('input', { ref: 'theColor', type: 'text' }),
 	        _react2.default.createElement(
@@ -177,7 +176,7 @@
 	  };
 	}, function (dispatch) {
 	  return (0, _redux.bindActionCreators)({
-	    bgChange: colorChangeTemp
+	    bgChange: colorChangeTemporarily
 	  }, dispatch);
 	})(ColorChanger);
 
@@ -196,8 +195,24 @@
 	      return _react2.default.createElement(
 	        'div',
 	        null,
-	        'The current color is: ',
-	        this.props.color
+	        _react2.default.createElement(
+	          'div',
+	          null,
+	          'The current color is: ',
+	          this.props.color
+	        ),
+	        _react2.default.createElement(
+	          'div',
+	          null,
+	          '\'A possible synonym is: ',
+	          this.props.synonym
+	        ),
+	        _react2.default.createElement(
+	          'div',
+	          null,
+	          '\'A definition is: ',
+	          this.props.definition
+	        )
 	      );
 	    }
 	  }]);
@@ -206,48 +221,20 @@
 	}(_react2.default.Component);
 
 	ColorDisplayer.propTypes = {
-	  color: _react2.default.PropTypes.string.isRequired
+	  color: _react2.default.PropTypes.string.isRequired,
+	  synonym: _react2.default.PropTypes.string,
+	  definition: _react2.default.PropTypes.string
 	};
 	ColorDisplayer = (0, _reactRedux.connect)(function (state) {
 	  return {
-	    color: state.color
+	    color: state.color,
+	    synonym: state.synonym,
+	    definition: state.definition
 	  };
 	})(ColorDisplayer);
 
-	var SynDisplayer = function (_React$Component3) {
-	  _inherits(SynDisplayer, _React$Component3);
-
-	  function SynDisplayer() {
-	    _classCallCheck(this, SynDisplayer);
-
-	    return _possibleConstructorReturn(this, Object.getPrototypeOf(SynDisplayer).apply(this, arguments));
-	  }
-
-	  _createClass(SynDisplayer, [{
-	    key: 'render',
-	    value: function render() {
-	      return _react2.default.createElement(
-	        'div',
-	        null,
-	        'A possible synonym is: ' + this.props.word
-	      );
-	    }
-	  }]);
-
-	  return SynDisplayer;
-	}(_react2.default.Component);
-
-	SynDisplayer.propTypes = {
-	  word: _react2.default.PropTypes.string
-	};
-	SynDisplayer = (0, _reactRedux.connect)(function (state) {
-	  return {
-	    word: state.synonym
-	  };
-	})(SynDisplayer);
-
-	var Demo = function (_React$Component4) {
-	  _inherits(Demo, _React$Component4);
+	var Demo = function (_React$Component3) {
+	  _inherits(Demo, _React$Component3);
 
 	  function Demo() {
 	    _classCallCheck(this, Demo);
@@ -257,31 +244,12 @@
 
 	  _createClass(Demo, [{
 	    key: 'render',
-
-	    // constructor(props) {
-	    //   super(props);
-	    //   this.state = {
-	    //     color: store.getState().color
-	    //   }
-	    // }
-	    // componentDidMount() {
-	    //   this.unsub = store.subscribe(() => {
-	    //     that.setState({
-	    //       color: store.getState().color
-	    //     })
-	    //   })
-	    // }
-	    // componentWillUnmount() {
-	    //   this.unsub();
-	    // }
-
 	    value: function render() {
 	      return _react2.default.createElement(
 	        'div',
 	        null,
 	        _react2.default.createElement(ColorChanger, null),
-	        _react2.default.createElement(ColorDisplayer, null),
-	        _react2.default.createElement(SynDisplayer, null)
+	        _react2.default.createElement(ColorDisplayer, null)
 	      );
 	    }
 	  }]);
@@ -19974,7 +19942,8 @@
 	//  Inital State
 	var initialState = {
 	  color: "blue",
-	  synonym: 'royal'
+	  synonym: 'royal',
+	  definition: 'The hue of that portion of the visible spectrum lying between green and indigo, evoked in the human observer by radiant energy with wavelengths of approximately 420 to 490 nanometers; any of a group of colors that may vary in lightness and saturation, whose hue is that of a clear daytime sky; one of the additive or light primaries; one of the psychological primary hues.'
 	};
 
 	//  Reducer A.K.A. state calculator
@@ -19993,9 +19962,12 @@
 	        synonym: action.synonym
 	      });
 	      break;
+	    case 'DEFINITION_CHANGE':
+	      return Object.assign({}, currentState, {
+	        definition: action.definition
+	      });
 	    default:
 	      return currentState;
-
 	  }
 	};
 
@@ -20003,7 +19975,7 @@
 	var store = (0, _redux.createStore)(colorReducer, (0, _redux.applyMiddleware)(_reduxThunk2.default));
 
 	store.subscribe(function () {
-	  console.log('STORE CHANGED', store.getState());
+	  console.log('STORE (State) CHANGED', store.getState());
 	});
 
 	// Exports from logic.js
@@ -23108,6 +23080,72 @@
 	    };
 	  };
 	}
+
+/***/ },
+/* 190 */
+/***/ function(module, exports, __webpack_require__) {
+
+	"use strict";
+
+	Object.defineProperty(exports, "__esModule", {
+	  value: true
+	});
+
+	var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+	var _superagent = __webpack_require__(183);
+
+	var _superagent2 = _interopRequireDefault(_superagent);
+
+	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+	//---------- Constants ---------
+	// Big huge thesaurus API key:
+	var bhtKey = "41acd19c3639856d205e03a0c61fdb5b";
+	// Wordnik API key
+	var wordnikKey = "100965abc00a8e73f570b08578a0131af8b8ff98caefcae7d";
+
+	// --------- API calls ----------
+	//-------------------------------
+
+	var Api = function () {
+	  function Api() {
+	    _classCallCheck(this, Api);
+	  }
+
+	  _createClass(Api, [{
+	    key: "getSynonym",
+	    value: function getSynonym(word, cb) {
+	      _superagent2.default.get('https://words.bighugelabs.com/api/2/' + bhtKey + '/' + word + '/json').end(function (err, res) {
+	        if (err || !res.ok) {
+	          console.log('Oh no! error');
+	        } else {
+	          var synonym = JSON.parse(res.text).adjective.syn.pop();
+	          return cb(synonym);
+	        }
+	      });
+	    }
+	  }, {
+	    key: "getDefinition",
+	    value: function getDefinition(word, cb) {
+	      _superagent2.default.get('http://api.wordnik.com/v4/word.json/' + word + '/definitions?api_key=' + wordnikKey).end(function (err, res) {
+	        if (err || !res.ok) {
+	          console.log('Oh no! error');
+	        } else {
+	          console.log();
+	          var definition = JSON.parse(res.text)[0].text;
+	          return cb(definition);
+	        }
+	      });
+	    }
+	  }]);
+
+	  return Api;
+	}();
+
+	exports.default = new Api();
 
 /***/ }
 /******/ ]);
